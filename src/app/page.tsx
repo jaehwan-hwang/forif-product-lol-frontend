@@ -29,11 +29,16 @@ export default function HomePage() {
           <div className="absolute inset-0 bg-bg/45" />
 
           <div className="relative flex flex-col items-center">
+            {/*
+              Riot CMS 에서 핫링크하지 않고 self-host 한다. 원본 URL 에 콘텐츠 해시가 박혀 있어
+              Riot 이 이미지를 교체하면 예고 없이 깨지는데, 첫 화면의 핵심 비주얼이 외부 호스트에
+              걸려 있으면 안 된다.
+            */}
             <Image
-              src="https://cmsassets.rgpub.io/sanity/images/dsfx7636/news/9eb028de391e65072d06e77f06d0955f66b9fa2c-736x316.png?accountingTag=LoL&auto=format&fit=fill&q=80&w=736"
+              src="/lol-wordmark.png"
               alt="League of Legends"
-              width={368}
-              height={158}
+              width={736}
+              height={316}
               className="h-auto w-[clamp(120px,40vw,525px)]"
               priority
             />
