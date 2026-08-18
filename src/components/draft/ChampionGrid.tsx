@@ -18,9 +18,13 @@ export function ChampionGrid({
   selectedChampionId: number | null;
   onSelect: (championId: number) => void;
 }) {
+  const uniqueChampions = Array.from(
+    new Map(champions.map((champion) => [champion.riotId.toLocaleLowerCase(), champion])).values(),
+  );
+
   return (
-    <div className="grid h-full min-h-0 grid-cols-12 content-start items-start gap-2 overflow-x-hidden overflow-y-auto overscroll-contain pr-1 [grid-auto-rows:max-content] [scrollbar-color:var(--color-line)_var(--color-surface)] [scrollbar-width:thin]">
-      {champions.map((champion) => {
+    <div className="custom-scrollbar grid h-full min-h-0 grid-cols-8 content-start items-start gap-2 overflow-x-hidden overflow-y-auto overscroll-contain pr-1 [grid-auto-rows:max-content] 2xl:grid-cols-10">
+      {uniqueChampions.map((champion) => {
         const selected = champion.id === selectedChampionId;
         const disabled = Boolean(champion.disabledReason);
         const title = champion.disabledReason
@@ -29,14 +33,14 @@ export function ChampionGrid({
 
         return (
           <button
-            key={champion.id}
+            key={champion.riotId}
             type="button"
             disabled={disabled}
             aria-label={title}
             aria-pressed={selected}
             title={title}
             onClick={() => onSelect(champion.id)}
-            className={`group relative block aspect-square w-full min-w-0 self-start overflow-hidden border transition-colors ${
+            className={`group relative block aspect-square w-full min-w-0 self-start overflow-hidden rounded-md border transition-colors ${
               selected
                 ? "border-gold ring-2 ring-gold/30"
                 : disabled
@@ -45,7 +49,7 @@ export function ChampionGrid({
             }`}
           >
             <ChampionArtwork
-              key={champion.imageUrl ?? "fallback"}
+              key={champion.riotId}
               champion={champion}
             />
             {selected && (
@@ -62,15 +66,16 @@ export function ChampionGrid({
 
 function ChampionArtwork({ champion }: { champion: DraftChampion }) {
   const [imageFailed, setImageFailed] = useState(false);
-  const showImage = Boolean(champion.imageUrl) && !imageFailed;
+  const imageUrl = champion.imageUrl;
+  const showImage = Boolean(imageUrl) && !imageFailed;
 
   return (
     <span className="absolute inset-0 grid place-items-center bg-gradient-to-br from-raised via-surface to-bg">
       {showImage ? (
         <Image
-          key={champion.imageUrl}
-          src={champion.imageUrl!}
-          alt=""
+          key={imageUrl}
+          src={imageUrl!}
+          alt={champion.nameKo}
           fill
           sizes="(max-width: 768px) 16vw, 10vw"
           className="object-cover transition-[filter] group-hover:brightness-110"

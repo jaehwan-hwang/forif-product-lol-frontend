@@ -1,6 +1,5 @@
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { LanePreferenceIcons } from "@/components/ui/LaneIcon";
 import { LaneTag } from "@/components/ui/LaneTag";
 import type { SessionTeam, Side } from "@/types";
 
@@ -52,10 +51,6 @@ export function TeamBoard({
             <span className="min-w-0 flex-1 truncate text-sm">
               {member.displayName}
             </span>
-            <LanePreferenceIcons
-              primary={member.primaryLane}
-              secondary={member.secondaryLane}
-            />
             <Badge tone="quiet">{participantTypeLabel(member.participantType)}</Badge>
           </li>
         ))}

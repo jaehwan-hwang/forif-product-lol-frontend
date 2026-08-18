@@ -31,7 +31,6 @@ export function RoomShell({
 }) {
   const [room, setRoom] = useState<Room | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const reload = useCallback(async () => {
     try {
@@ -88,8 +87,8 @@ export function RoomShell({
 
   return (
     <RoomContext.Provider value={value}>
-      <Sidebar roomId={room.id} roomName={room.name} open={sidebarOpen} onToggle={() => setSidebarOpen((value) => !value)} />
-      <div className="min-w-0 flex-1">{children}</div>
+      <Sidebar roomId={room.id} roomName={room.name} />
+      <div className="min-w-0 flex-1 font-sans">{children}</div>
     </RoomContext.Provider>
   );
 }

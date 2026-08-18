@@ -4,6 +4,8 @@ import { useState, type FormEvent } from "react";
 import { useRoom } from "@/components/group/RoomShell";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { Checkbox } from "@/components/ui/Checkbox";
+import { Dialog } from "@/components/ui/Dialog";
 import { Field, Input } from "@/components/ui/Field";
 import { rotatePublicCode, updateRoom } from "@/lib/api/rooms";
 import { deleteRoom, leaveRoom } from "@/lib/api/rooms";
@@ -15,6 +17,8 @@ export default function RoomSettingsPage() {
   const canManage = room.myRole === "GROUP_OWNER" || room.myRole === "GROUP_MANAGER";
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<"rotate" | "leave" | null>(null);
+  const [confirmSaving, setConfirmSaving] = useState(false);
   const entryUrl =
     typeof window === "undefined"
       ? `/r/${room.publicCode}`
@@ -42,15 +46,16 @@ export default function RoomSettingsPage() {
   }
 
   async function rotate() {
-    if (!window.confirm("공개 코드를 바꾸면 이전 링크로 새로 입장할 수 없습니다. 계속할까요?")) {
-      return;
-    }
     try {
+      setConfirmSaving(true);
       const updated = await rotatePublicCode(room.id);
       setRoom(updated);
       setMessage("공개 코드를 재발급했습니다.");
+      setConfirmAction(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "코드를 재발급하지 못했습니다.");
+    } finally {
+      setConfirmSaving(false);
     }
   }
 
@@ -66,13 +71,14 @@ export default function RoomSettingsPage() {
 
   async function leaveOrDelete() {
     const owner = room.myRole === "GROUP_OWNER";
-    if (!window.confirm(owner ? "그룹과 신규 접근을 삭제할까요? 기존 경기 기록은 보존됩니다." : "이 그룹에서 탈퇴할까요?")) return;
     try {
+      setConfirmSaving(true);
       if (owner) await deleteRoom(room.id);
       else await leaveRoom(room.id);
       router.replace("/rooms");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : owner ? "그룹을 삭제하지 못했습니다." : "그룹을 탈퇴하지 못했습니다.");
+      setConfirmSaving(false);
     }
   }
 
@@ -98,7 +104,7 @@ export default function RoomSettingsPage() {
                 </Button>
               </div>
             </Field>
-            <Button type="button" variant="danger" size="sm" onClick={() => void rotate()}>
+            <Button type="button" variant="danger" size="sm" onClick={() => setConfirmAction("rotate")}>
               공개 코드 재발급
             </Button>
           </div>
@@ -113,15 +119,9 @@ export default function RoomSettingsPage() {
             <Field label="설명">
               <Input name="description" defaultValue={room.description ?? ""} maxLength={500} />
             </Field>
-            <label className="flex items-center gap-3 text-sm">
-              <input
-                name="guestAdmissionEnabled"
-                type="checkbox"
-                defaultChecked={room.guestAdmissionEnabled}
-                className="h-4 w-4 accent-[var(--color-gold)]"
-              />
+            <Checkbox name="guestAdmissionEnabled" defaultChecked={room.guestAdmissionEnabled}>
               신규 게스트 입장 허용
-            </label>
+            </Checkbox>
             <Field
               label="새 입장 암호"
               hint={room.entryPasswordProtected ? "현재 암호를 바꾸려면 새 암호를 입력하세요." : "비워 두면 암호를 사용하지 않습니다."}
@@ -143,10 +143,32 @@ export default function RoomSettingsPage() {
           <CardHeader eyebrow="주의" title={room.myRole === "GROUP_OWNER" ? "그룹 삭제" : "그룹 탈퇴"} />
           <div className="px-5 py-5">
             <p className="mb-4 text-sm leading-relaxed text-muted">{room.myRole === "GROUP_OWNER" ? "그룹을 보관 상태로 전환해 더 이상 접근하거나 참가할 수 없게 합니다." : "탈퇴하면 참가자 목록에서 사라지고 다시 초대받기 전에는 그룹에 접근할 수 없습니다."}</p>
-            <Button variant="danger" onClick={() => void leaveOrDelete()}>{room.myRole === "GROUP_OWNER" ? "그룹 삭제" : "그룹 탈퇴"}</Button>
+            <Button variant="danger" onClick={() => setConfirmAction("leave")}>{room.myRole === "GROUP_OWNER" ? "그룹 삭제" : "그룹 탈퇴"}</Button>
           </div>
         </Card>
       </div>
+      <Dialog
+        open={confirmAction !== null}
+        title={
+          confirmAction === "rotate"
+            ? "공개 코드를 재발급할까요?"
+            : room.myRole === "GROUP_OWNER"
+              ? "그룹을 삭제할까요?"
+              : "그룹에서 탈퇴할까요?"
+        }
+        description={
+          confirmAction === "rotate"
+            ? "이전 초대 링크와 코드로는 새로 입장할 수 없습니다."
+            : room.myRole === "GROUP_OWNER"
+              ? "신규 접근은 차단되며 기존 경기 기록은 보존됩니다."
+              : "참가자 목록에서 사라지고 다시 초대받기 전에는 접근할 수 없습니다."
+        }
+        confirmLabel={confirmAction === "rotate" ? "재발급" : room.myRole === "GROUP_OWNER" ? "그룹 삭제" : "탈퇴"}
+        danger
+        pending={confirmSaving}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => void (confirmAction === "rotate" ? rotate() : leaveOrDelete())}
+      />
     </main>
   );
 }

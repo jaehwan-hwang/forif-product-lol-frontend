@@ -21,7 +21,7 @@ import { ProfileDialog } from "@/components/auth/ProfileDialog";
  */
 const NAV = [
   { href: "/rooms", label: "그룹", match: "/rooms" },
-  { href: "/tier", label: "티어", match: "/tier" },
+  { href: "/champions", label: "챔피언 분석", match: "/champions" },
 ];
 
 export function NavBar() {

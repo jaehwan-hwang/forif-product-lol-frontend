@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { Checkbox } from "@/components/ui/Checkbox";
 import { Field, Input } from "@/components/ui/Field";
 import { useAuth } from "@/hooks/useAuth";
 import { createRoom, fetchCaptainInvitations, fetchRooms, respondToCaptainInvitation } from "@/lib/api/rooms";
@@ -82,14 +83,16 @@ export default function RoomsPage() {
         {isLoggedIn && <Button variant="primary" onClick={() => setCreating((value) => !value)}>{creating ? "닫기" : "그룹 만들기"}</Button>}
       </div>
 
-      <Card className="mb-7">
-        <CardHeader eyebrow="초대받았나요?" title="그룹 코드로 참가" />
-        <form className="flex gap-2 px-5 py-5" onSubmit={join}>
-          <Input value={joinCode} onChange={(event) => setJoinCode(event.target.value)} placeholder="8자리 그룹 코드" maxLength={8} required />
-          <Button type="submit" variant="primary">입장</Button>
-        </form>
-        {!isLoggedIn && <p className="border-t border-line-soft px-5 py-3 text-xs text-dim">로그인하지 않아도 닉네임과 그룹 코드로 참가할 수 있습니다.</p>}
-      </Card>
+      {!creating && (
+        <Card className="mb-7">
+          <CardHeader eyebrow="초대받았나요?" title="그룹 코드로 참가" />
+          <form className="flex gap-2 px-5 py-5" onSubmit={join}>
+            <Input value={joinCode} onChange={(event) => setJoinCode(event.target.value)} placeholder="8자리 그룹 코드" maxLength={8} required />
+            <Button type="submit" variant="primary">입장</Button>
+          </form>
+          {!isLoggedIn && <p className="border-t border-line-soft px-5 py-3 text-xs text-dim">로그인하지 않아도 닉네임과 그룹 코드로 참가할 수 있습니다.</p>}
+        </Card>
+      )}
 
       {error && <p role="alert" className="mb-5 text-sm text-loss">{error}</p>}
 
@@ -153,9 +156,13 @@ function CreateGroupCard({ onCreated }: { onCreated(room: Room): void }) {
         <Field label="그룹 이름"><Input name="name" maxLength={100} required /></Field>
         <Field label="설명"><Input name="description" maxLength={500} /></Field>
         <Field label="선택 입장 암호" hint="비워두면 초대 링크와 코드만으로 입장합니다."><Input name="entryPassword" type="password" minLength={4} maxLength={72} /></Field>
-        <label className="flex items-center gap-2 text-sm"><input name="guestAdmissionEnabled" type="checkbox" defaultChecked /> 비회원 입장 허용</label>
+        <div className="pb-2 pt-1">
+          <Checkbox name="guestAdmissionEnabled" defaultChecked>비회원 입장 허용</Checkbox>
+        </div>
         {error && <p className="text-sm text-loss">{error}</p>}
-        <Button type="submit" variant="primary" disabled={saving}>{saving ? "만드는 중…" : "그룹 만들기"}</Button>
+        <div>
+          <Button type="submit" variant="primary" disabled={saving}>{saving ? "만드는 중…" : "그룹 만들기"}</Button>
+        </div>
       </form>
     </Card>
   );
