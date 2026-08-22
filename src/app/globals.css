@@ -74,13 +74,14 @@
 }
 
 @layer components {
-  /* 섹션 위 작은 라벨. 대문자 모노 + 넓은 자간 = 계기판 눈금 톤 */
+  /*
+   * 섹션 위 작은 라벨.
+   * 예전엔 11px 대문자 모노 + 넓은 자간(계기판 눈금 톤)이었으나, 한글에서는
+   * uppercase 가 아무 효과도 없이 자간만 벌어져 읽기 나빠서 일반 본문 톤으로 바꿨다.
+   */
   .eyebrow {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--color-dim);
+    font-size: 0.875rem;
+    color: var(--color-muted);
   }
 }
 @keyframes draft-champion-reveal {

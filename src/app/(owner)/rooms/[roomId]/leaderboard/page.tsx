@@ -24,7 +24,7 @@ export default function LeaderboardPage() {
   const { room } = useRoom();
   const canManage = room.myRole === "GROUP_OWNER" || room.myRole === "GROUP_MANAGER";
   const [players, setPlayers] = useState<Player[]>([]);
-  const [sortKey, setSortKey] = useState<SortKey>("solo");
+  const [sortKey, setSortKey] = useState<SortKey>("rating");
   const [descending, setDescending] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
@@ -34,7 +34,8 @@ export default function LeaderboardPage() {
     void fetchPlayers(Number(params.roomId)).then(setPlayers).catch((caught) => setError(caught instanceof Error ? caught.message : "랭킹을 불러오지 못했습니다."));
   }, [params.roomId]);
 
-  const baseRank = useMemo(() => new Map([...players].sort((a, b) => (b.riotAccount?.ladderScore ?? 0) - (a.riotAccount?.ladderScore ?? 0)).map((player, index) => [player.id, index + 1])), [players]);
+  // 순위는 그룹 레이팅 기준이다 — 솔랭 점수는 첫 판 전까지의 시드일 뿐이라 내전이 쌓이면 갈라진다
+  const baseRank = useMemo(() => new Map([...players].sort((a, b) => b.rating - a.rating).map((player, index) => [player.id, index + 1])), [players]);
   const sorted = useMemo(() => [...players].sort((a, b) => {
     const value = (player: Player) => {
       if (sortKey === "rank") return baseRank.get(player.id) ?? Number.MAX_SAFE_INTEGER;
@@ -81,7 +82,7 @@ export default function LeaderboardPage() {
           </Button>
         </div>
       )}
-      <div className="mb-8"><p className="eyebrow mb-2">랭킹</p><h1 className="text-xl font-semibold">솔로랭크 현황</h1><p className="mt-2 text-[13px] text-muted">그룹 레이팅 계산은 개발 중이며, 현재 표의 솔로랭크 데이터는 Riot 계정 동기화 결과입니다.</p></div>
+      <div className="mb-8"><p className="eyebrow mb-2">랭킹</p><h1 className="text-xl font-semibold">그룹 레이팅</h1><p className="mt-2 text-[13px] text-muted">솔로랭크 점수로 시작해, 내전 결과가 확정될 때마다 레이팅이 갱신됩니다. 점수 반영을 끈 세션의 경기는 레이팅에 영향을 주지 않습니다.</p></div>
       {error && <p className="mb-5 text-sm text-loss">{error}</p>}
       {syncNotice && <p className="mb-5 text-sm text-gain">{syncNotice}</p>}
       <Card className="overflow-x-auto">
@@ -105,7 +106,10 @@ export default function LeaderboardPage() {
               </div>
               <span className="tabular text-right text-sm text-muted">{wins}승 {losses}패</span>
               <span className="tabular text-right text-sm text-muted">{wins + losses ? `${(soloWinRate(player) * 100).toFixed(1)}%` : "-"}</span>
-              <span className="text-right text-xs text-dim" title="레이팅 계산식 연동 예정">개발 중</span>
+              <div className="text-right">
+                <p className="tabular text-sm text-gold">{player.rating.toLocaleString()}</p>
+                <p className="tabular mt-0.5 text-xs text-dim">{player.gamesPlayed ? `내전 ${player.wins}승 ${player.losses}패` : "내전 기록 없음"}</p>
+              </div>
             </li>;
           })}</ul>
         )}

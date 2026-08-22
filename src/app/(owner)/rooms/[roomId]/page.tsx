@@ -63,7 +63,6 @@ export default function RoomOverviewPage() {
         <div className="pointer-events-none absolute -right-20 -top-24 size-72 rounded-full bg-gold/10 blur-3xl" />
         <div className="relative flex flex-wrap items-end justify-between gap-5">
           <div className="min-w-0">
-            <p className="eyebrow mb-2">그룹 개요</p>
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="truncate text-2xl font-semibold tracking-tight">{room.name}</h1>
               <Badge>{room.publicCode}</Badge>
@@ -86,7 +85,7 @@ export default function RoomOverviewPage() {
       <section className="mb-7 grid grid-cols-2 gap-3 xl:grid-cols-4">
         {metrics.map((metric) => (
           <Card key={metric.label} className="relative overflow-hidden px-5 py-5">
-            <p className="eyebrow">{metric.label}</p>
+            <p className="text-sm text-muted">{metric.label}</p>
             <div className="mt-3 flex items-end gap-2">
               <strong
                 className={`tabular text-3xl font-semibold ${
@@ -107,7 +106,7 @@ export default function RoomOverviewPage() {
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_.8fr]">
         <Card>
-          <CardHeader eyebrow="현재 상태" title="진행 중인 세션" />
+          <CardHeader title="진행 중인 세션" />
           <div className="px-5 py-5">
             {sessions === null ? (
               <p className="text-sm text-muted">세션 상태를 불러오는 중…</p>
@@ -141,7 +140,7 @@ export default function RoomOverviewPage() {
 
             {latestSessions.length > 0 && (
               <div className="mt-5 border-t border-line-soft pt-4">
-                <p className="eyebrow mb-2">최근 세션</p>
+                <p className="mb-2 text-sm text-muted">최근 세션</p>
                 <ul className="space-y-1">
                   {latestSessions.map((session) => (
                     <li key={session.id}>
@@ -161,7 +160,7 @@ export default function RoomOverviewPage() {
         </Card>
 
         <Card>
-          <CardHeader eyebrow="운영 정보" title="그룹 상태" />
+          <CardHeader title="그룹 상태" />
           <dl className="divide-y divide-line-soft px-5 py-2 text-sm">
             <div className="flex items-center justify-between gap-4 py-4">
               <dt className="text-muted">그룹 소유자</dt>
