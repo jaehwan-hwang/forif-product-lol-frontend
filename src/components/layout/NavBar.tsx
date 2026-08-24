@@ -13,7 +13,7 @@ import { ProfileDialog } from "@/components/auth/ProfileDialog";
  * 전역 네비게이션 바.
  *
  *   왼쪽 = 로고 (홈)
- *   가운데 = 그룹 · 티어
+ *   가운데 = 그룹 · 챔피언 분석
  *   오른쪽 = 로그인 / 로그아웃
  *
  * 방 안으로 들어가면 방 스코프 메뉴(명단·랭킹·세션·설정)는 사이드바가 맡는다.
@@ -48,7 +48,7 @@ export function NavBar() {
           <span className="text-xl font-bold tracking-tight text-white">내전하냥</span>
         </Link>
 
-        {/* 가운데 — 그룹 · 티어 */}
+        {/* 가운데 — 그룹 · 챔피언 분석 */}
         <nav className="flex flex-1 items-center justify-center gap-2">
           {NAV.map((item) => {
             const active = pathname.startsWith(item.match);

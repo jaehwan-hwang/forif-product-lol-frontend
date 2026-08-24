@@ -88,7 +88,7 @@ export function RoomShell({
   return (
     <RoomContext.Provider value={value}>
       <Sidebar roomId={room.id} roomName={room.name} />
-      <div className="min-w-0 flex-1 font-sans">{children}</div>
+      <div className="min-w-0 flex-1 pb-16 font-sans md:pb-0">{children}</div>
     </RoomContext.Provider>
   );
 }

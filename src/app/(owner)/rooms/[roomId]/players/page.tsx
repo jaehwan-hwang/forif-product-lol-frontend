@@ -207,6 +207,7 @@ export default function PlayersPage() {
       setDialog(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "참가자 정보를 변경하지 못했습니다.");
+      setDialog(null);
     } finally {
       setDialogSaving(false);
     }

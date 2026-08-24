@@ -23,7 +23,7 @@ export function ChampionGrid({
   );
 
   return (
-    <div className="custom-scrollbar grid h-full min-h-0 grid-cols-8 content-start items-start gap-2 overflow-x-hidden overflow-y-auto overscroll-contain pr-1 [grid-auto-rows:max-content] 2xl:grid-cols-10">
+    <div className="grid h-full min-h-0 grid-cols-8 content-start items-start gap-2 overflow-x-hidden overflow-y-auto overscroll-contain pr-1 [grid-auto-rows:max-content] 2xl:grid-cols-10">
       {uniqueChampions.map((champion) => {
         const selected = champion.id === selectedChampionId;
         const disabled = Boolean(champion.disabledReason);

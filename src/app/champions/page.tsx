@@ -114,7 +114,8 @@ export default function ChampionAnalyticsPage() {
       <NavBar />
       <main className="mx-auto max-w-6xl px-6 py-10">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold tracking-tight">챔피언 분석</h1>
+          <p className="eyebrow mb-2">전적 통계</p>
+          <h1 className="text-xl font-semibold tracking-tight">챔피언 분석</h1>
           <p className="mt-3 text-base text-muted">
             서비스의 모든 완료 내전과 입력된 KDA를 합산한 공용 통계입니다.
           </p>
@@ -144,11 +145,11 @@ export default function ChampionAnalyticsPage() {
         {error && <p className="mb-5 rounded-lg border border-loss/40 bg-loss/10 p-4 text-loss">{error}</p>}
         {loading ? (
           <Card className="p-12 text-center text-muted">전체 내전 전적을 집계하는 중입니다.</Card>
-        ) : rows.length === 0 ? (
+        ) : error ? null : rows.length === 0 ? (
           <Card className="p-12 text-center text-muted">이 조건으로 완료된 챔피언 전적이 없습니다.</Card>
         ) : (
           <Card className="overflow-hidden">
-            <div className="custom-scrollbar overflow-x-auto">
+            <div className="overflow-x-auto">
               <div className="min-w-[760px]">
                 <div className="grid grid-cols-[68px_minmax(220px,1fr)_100px_130px_130px_130px] items-center border-b border-line bg-raised/60 px-4 py-3 text-sm text-muted">
                   <span>순위</span>
@@ -225,11 +226,10 @@ function ChampionRow({ row, rank, honey }: { row: ChampionPerformance; rank: num
               title="승률 상위 4%"
             >
               <Image
-                src="/riot/honeybee.svg"
+                src="/riot/honeybee.png"
                 alt=""
                 width={20}
                 height={20}
-                unoptimized
                 className="size-5 object-contain"
               />
             </span>

@@ -54,6 +54,7 @@ export default function RoomSettingsPage() {
       setConfirmAction(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "코드를 재발급하지 못했습니다.");
+      setConfirmAction(null);
     } finally {
       setConfirmSaving(false);
     }
@@ -78,6 +79,7 @@ export default function RoomSettingsPage() {
       router.replace("/rooms");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : owner ? "그룹을 삭제하지 못했습니다." : "그룹을 탈퇴하지 못했습니다.");
+      setConfirmAction(null);
       setConfirmSaving(false);
     }
   }

@@ -15,6 +15,7 @@ export function Sidebar({ roomId, roomName }: { roomId: number; roomName: string
   const pathname = usePathname();
   const base = `/rooms/${roomId}`;
   return (
+    <>
       <aside className="hidden w-56 shrink-0 border-r border-line bg-bg font-sans md:block">
         <div className="border-b border-line px-3 py-5">
           <Link href="/rooms" className="text-sm text-muted hover:text-text">← 그룹 목록</Link>
@@ -32,5 +33,29 @@ export function Sidebar({ roomId, roomName }: { roomId: number; roomName: string
           })}
         </nav>
       </aside>
+      <nav
+        aria-label={`${roomName} 그룹 메뉴`}
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-line bg-bg/95 pb-[env(safe-area-inset-bottom)] font-sans backdrop-blur md:hidden"
+      >
+        {NAV.map((item) => {
+          const href = item.segment ? `${base}/${item.segment}` : base;
+          const active = item.segment ? pathname.startsWith(href) : pathname === base;
+          return (
+            <Link
+              key={item.segment}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={`min-w-0 truncate px-1 py-3 text-center text-[11px] transition-colors ${
+                active
+                  ? "bg-raised font-semibold text-gold"
+                  : "text-muted hover:bg-raised/60 hover:text-text"
+              }`}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+    </>
   );
 }

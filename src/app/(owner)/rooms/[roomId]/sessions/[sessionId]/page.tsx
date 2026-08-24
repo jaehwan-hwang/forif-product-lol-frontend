@@ -42,6 +42,7 @@ import type {
 
 type KdaField = "kills" | "deaths" | "assists";
 type KdaDraft = Record<number, Record<KdaField, string>>;
+const KDA_MAX_DIGITS = 5;
 
 const STATUS_LABEL: Record<SessionStatus, string> = {
   PREPARING: "준비 중",
@@ -195,12 +196,6 @@ export default function SessionDetailPage() {
     }));
   }
 
-  function cancelKdaAdvance(input: HTMLInputElement) {
-    const timerId = Number(input.dataset.advanceTimer);
-    if (Number.isFinite(timerId)) window.clearTimeout(timerId);
-    delete input.dataset.advanceTimer;
-  }
-
   function moveKdaFocus(input: HTMLInputElement, offset: number) {
     const grid = input.closest<HTMLElement>("[data-kda-grid]");
     const inputs = Array.from(
@@ -212,15 +207,8 @@ export default function SessionDetailPage() {
     target.select();
   }
 
-  function scheduleKdaAdvance(input: HTMLInputElement) {
-    cancelKdaAdvance(input);
-    if (!/^\d{1,5}$/.test(input.value)) return;
-    input.dataset.advanceTimer = String(
-      window.setTimeout(() => {
-        moveKdaFocus(input, 1);
-        delete input.dataset.advanceTimer;
-      }, 350),
-    );
+  function advanceKdaAtLimit(input: HTMLInputElement) {
+    if (input.value.length === KDA_MAX_DIGITS) moveKdaFocus(input, 1);
   }
 
   function handleKdaKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -236,7 +224,6 @@ export default function SessionDetailPage() {
               : null;
     if (offset === null) return;
     event.preventDefault();
-    cancelKdaAdvance(event.currentTarget);
     moveKdaFocus(event.currentTarget, offset);
   }
 
@@ -286,6 +273,8 @@ export default function SessionDetailPage() {
     if (succeeded) {
       setResultEntry(null);
       setResultConfirmation(null);
+    } else {
+      setResultConfirmation(null);
     }
   }
 
@@ -318,8 +307,8 @@ export default function SessionDetailPage() {
   async function confirmTeamRename() {
     const nextName = teamNameDraft.trim();
     if (!renameSide || !nextName) return;
-    const succeeded = await runAction(() => renameSessionTeam(sessionId, nextName));
-    if (succeeded) setRenameSide(null);
+    await runAction(() => renameSessionTeam(sessionId, nextName));
+    setRenameSide(null);
   }
 
   function matchWinnerName(match: SessionMatch, side: Side) {
@@ -761,12 +750,10 @@ export default function SessionDetailPage() {
                                           field,
                                           event.currentTarget.value,
                                         );
-                                        scheduleKdaAdvance(event.currentTarget);
+                                        advanceKdaAtLimit(event.currentTarget);
                                       }}
                                       onKeyDown={handleKdaKeyDown}
-                                      onBlur={(event) =>
-                                        cancelKdaAdvance(event.currentTarget)
-                                      }
+                                      maxLength={KDA_MAX_DIGITS}
                                       placeholder={field[0].toUpperCase()}
                                       className="tabular h-8 w-full rounded border border-line bg-surface px-1 text-center text-xs outline-none focus:border-gold"
                                     />

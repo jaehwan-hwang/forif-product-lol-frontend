@@ -42,6 +42,8 @@ export function Select({
   className?: string;
 }) {
   const id = useId();
+  const triggerId = `${id}-trigger`;
+  const listboxId = `${id}-listbox`;
   const rootRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
@@ -57,6 +59,10 @@ export function Select({
         .includes(normalized),
     );
   }, [options, query]);
+  const activeOptionId =
+    open && filteredOptions[activeIndex]
+      ? `${id}-option-${activeIndex}`
+      : undefined;
 
   useEffect(() => {
     if (!open) return;
@@ -115,10 +121,13 @@ export function Select({
       onKeyDown={handleKeyDown}
     >
       <button
+        id={triggerId}
         type="button"
+        role="combobox"
         aria-label={ariaLabel}
         aria-expanded={open}
-        aria-controls={id}
+        aria-controls={listboxId}
+        aria-activedescendant={activeOptionId}
         aria-haspopup="listbox"
         disabled={disabled}
         onClick={() => {
@@ -159,6 +168,12 @@ export function Select({
               <span className="sr-only">{searchPlaceholder}</span>
               <input
                 ref={searchRef}
+                role="combobox"
+                aria-label={searchPlaceholder}
+                aria-autocomplete="list"
+                aria-expanded={open}
+                aria-controls={listboxId}
+                aria-activedescendant={activeOptionId}
                 value={query}
                 onChange={(event) => {
                   setQuery(event.target.value);
@@ -169,26 +184,30 @@ export function Select({
               />
             </label>
           )}
-          <ul id={id} role="listbox" aria-label={ariaLabel} className="custom-scrollbar max-h-64 overflow-y-auto">
+          <ul id={listboxId} role="listbox" aria-labelledby={triggerId} className="max-h-64 overflow-y-auto">
             {filteredOptions.map((option, index) => (
-              <li key={option.value} role="option" aria-selected={option.value === value}>
-                <button
-                  type="button"
-                  disabled={option.disabled}
-                  onPointerMove={() => setActiveIndex(index)}
-                  onClick={() => select(option)}
-                  className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors disabled:opacity-35 ${
-                    option.value === value
-                      ? "bg-gold/15 text-gold"
+              <li
+                id={`${id}-option-${index}`}
+                key={option.value}
+                role="option"
+                aria-selected={option.value === value}
+                aria-disabled={option.disabled || undefined}
+                onMouseDown={(event) => event.preventDefault()}
+                onPointerMove={() => setActiveIndex(index)}
+                onClick={() => select(option)}
+                className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                  option.disabled
+                    ? "cursor-not-allowed opacity-35"
+                    : option.value === value
+                      ? "cursor-pointer bg-gold/15 text-gold"
                       : index === activeIndex
-                        ? "bg-raised text-text"
-                        : "text-muted hover:bg-raised hover:text-text"
-                  }`}
-                >
-                  {option.prefix}
-                  <span className="min-w-0 flex-1 truncate">{option.label}</span>
-                  {option.value === value && <span aria-hidden="true">✓</span>}
-                </button>
+                        ? "cursor-pointer bg-raised text-text"
+                        : "cursor-pointer text-muted hover:bg-raised hover:text-text"
+                }`}
+              >
+                {option.prefix}
+                <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                {option.value === value && <span aria-hidden="true">✓</span>}
               </li>
             ))}
             {filteredOptions.length === 0 && (

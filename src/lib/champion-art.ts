@@ -1,19 +1,20 @@
-const DATA_DRAGON_BASE_URL = "https://ddragon.leagueoflegends.com";
-const LEGACY_CHAMPION_PREFIX = "Jade_";
+import {
+  NON_STANDARD_CHAMPION_PREFIXES,
+  normalizeChampionRiotId,
+} from "@/lib/champion-catalog";
 
-function standardChampionId(riotId: string) {
-  return riotId.startsWith(LEGACY_CHAMPION_PREFIX)
-    ? riotId.slice(LEGACY_CHAMPION_PREFIX.length)
-    : riotId;
-}
+const DATA_DRAGON_BASE_URL = "https://ddragon.leagueoflegends.com";
 
 function standardChampionImageUrl(imageUrl: string) {
-  return imageUrl.replaceAll(LEGACY_CHAMPION_PREFIX, "");
+  return NON_STANDARD_CHAMPION_PREFIXES.reduce(
+    (current, prefix) => current.replaceAll(prefix, ""),
+    imageUrl,
+  );
 }
 
 /** Prefer the versioned image URL returned by our champion catalog API. */
 export function championSquareUrl(riotId: string, imageUrl?: string | null) {
-  const normalizedRiotId = standardChampionId(riotId);
+  const normalizedRiotId = normalizeChampionRiotId(riotId);
   if (imageUrl) {
     return normalizedRiotId === riotId
       ? imageUrl
@@ -25,5 +26,5 @@ export function championSquareUrl(riotId: string, imageUrl?: string | null) {
 /** Use artwork rather than a square portrait for champion-select surfaces. */
 export function championSplashUrl(riotId: string, ddragonVersion?: string) {
   const cacheVersion = ddragonVersion ? `?v=${encodeURIComponent(ddragonVersion)}` : "";
-  return `${DATA_DRAGON_BASE_URL}/cdn/img/champion/splash/${encodeURIComponent(standardChampionId(riotId))}_0.jpg${cacheVersion}`;
+  return `${DATA_DRAGON_BASE_URL}/cdn/img/champion/splash/${encodeURIComponent(normalizeChampionRiotId(riotId))}_0.jpg${cacheVersion}`;
 }
