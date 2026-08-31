@@ -7,6 +7,9 @@ import { useRoom } from "@/components/group/RoomShell";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { Checkbox } from "@/components/ui/Checkbox";
+import { Input } from "@/components/ui/Field";
+import { Select } from "@/components/ui/Select";
 import { useAuth } from "@/hooks/useAuth";
 import { FEARLESS_LABEL, LANES, LANE_LABEL_KO } from "@/lib/constants";
 import { LaneTag } from "@/components/ui/LaneTag";
@@ -243,99 +246,105 @@ export default function SessionsPage() {
           <CardHeader eyebrow="session-v1" title="새 세션 제안" />
           <form onSubmit={handleCreate} className="space-y-6 px-5 py-5">
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <label className="text-xs text-muted">
+              <label className="text-sm text-muted">
                 세션 이름
-                <input
+                <Input
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                   maxLength={100}
                   placeholder="금요일 정기 내전"
-                  className="mt-2 h-10 w-full rounded-md border border-line bg-bg px-3 text-sm text-text"
+                  className="mt-2"
                 />
               </label>
-              <label className="text-xs text-muted">
+              <label className="text-sm text-muted">
                 경기 방식
-                <select
+                <Select
                   value={matchFormat}
-                  onChange={(event) => setMatchFormat(event.target.value as MatchFormat)}
-                  className="mt-2 h-10 w-full rounded-md border border-line bg-bg px-3 text-sm text-text"
-                >
-                  {Object.entries(MATCH_FORMAT_LABEL).map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
+                  onChange={(value) => setMatchFormat(value as MatchFormat)}
+                  options={Object.entries(MATCH_FORMAT_LABEL).map(([value, label]) => ({ value, label }))}
+                  ariaLabel="경기 방식"
+                  className="mt-2"
+                />
               </label>
-              <label className="text-xs text-muted">
+              <label className="text-sm text-muted">
                 피어리스 방식
-                <select
+                <Select
                   value={fearlessMode}
-                  onChange={(event) => setFearlessMode(event.target.value as FearlessMode)}
-                  className="mt-2 h-10 w-full rounded-md border border-line bg-bg px-3 text-sm text-text"
-                >
-                  {Object.entries(FEARLESS_LABEL).map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
+                  onChange={(value) => setFearlessMode(value as FearlessMode)}
+                  options={Object.entries(FEARLESS_LABEL).map(([value, label]) => ({ value, label }))}
+                  ariaLabel="피어리스 방식"
+                  className="mt-2"
+                />
               </label>
-              <label className="text-xs text-muted">
+              <label className="text-sm text-muted">
                 내 진영
-                <select
+                <Select
                   value={creatorSide}
-                  onChange={(event) => setCreatorSide(event.target.value as Side)}
-                  className="mt-2 h-10 w-full rounded-md border border-line bg-bg px-3 text-sm text-text"
-                >
-                  <option value="BLUE">BLUE</option>
-                  <option value="RED">RED</option>
-                </select>
+                  onChange={(value) => setCreatorSide(value as Side)}
+                  options={[{ value: "BLUE", label: "BLUE" }, { value: "RED", label: "RED" }]}
+                  ariaLabel="내 진영"
+                  className="mt-2"
+                />
               </label>
-              <label className="text-xs text-muted">
+              <label className="text-sm text-muted">
                 상대 팀장
-                <select
+                <Select
                   value={opponentCaptainUserId}
-                  onChange={(event) => setOpponentCaptainUserId(event.target.value)}
-                  className="mt-2 h-10 w-full rounded-md border border-line bg-bg px-3 text-sm text-text"
-                  required
-                >
-                  <option value="">회원 선택</option>
-                  {members.filter((member) => member.user.id !== user?.id).map((member) => <option key={member.user.id} value={member.user.id}>{member.user.displayName}</option>)}
-                </select>
+                  onChange={setOpponentCaptainUserId}
+                  options={members
+                    .filter((member) => member.user.id !== user?.id)
+                    .map((member) => ({
+                      value: String(member.user.id),
+                      label: member.user.displayName,
+                      keywords: member.player?.riotAccount
+                        ? `${member.player.riotAccount.gameName} ${member.player.riotAccount.tagLine}`
+                        : undefined,
+                    }))}
+                  placeholder="팀장 검색"
+                  ariaLabel="상대 팀장"
+                  searchable
+                  searchPlaceholder="이름 또는 Riot ID 검색"
+                  className="mt-2"
+                />
               </label>
             </div>
 
-            <label className="flex items-center gap-2 text-sm text-muted">
-              <input
-                type="checkbox"
+            <Checkbox
                 checked={ratingEnabled}
                 onChange={(event) => setRatingEnabled(event.target.checked)}
-              />
+            >
               결과를 그룹 점수에 반영
-            </label>
+            </Checkbox>
 
             <div className="grid gap-6 lg:grid-cols-2">
               {(["BLUE", "RED"] as Side[]).map((side) => (
                 <div key={side}>
                   <div className="mb-3 flex items-center gap-2">
                     <Badge tone={side === "BLUE" ? "blue" : "red"}>{side}</Badge>
-                    <span className="text-xs text-dim">
+                    <span className="text-sm text-muted">
                       팀장 {side === creatorSide ? user?.displayName : members.find((member) => String(member.user.id) === opponentCaptainUserId)?.user.displayName ?? "선택 필요"}
                     </span>
                   </div>
                   <div className="space-y-2">
                     {LANES.map((lane) => (
-                      <label key={lane} className="grid grid-cols-[72px_1fr] items-center gap-3 text-xs text-muted">
+                      <label key={lane} className="grid grid-cols-[72px_1fr] items-center gap-3 text-sm text-muted">
                         <span><LaneTag lane={lane} /></span>
-                        <select
+                        <Select
                           value={roster[side][lane]}
-                          onChange={(event) => updateRoster(side, lane, event.target.value)}
-                          className="h-10 rounded-md border border-line bg-bg px-3 text-sm text-text"
-                        >
-                          <option value="">참가자 선택</option>
-                          {participants.map((participant) => (
-                            <option key={participant.key} value={participant.key}>
-                              {participant.name} · {participant.kind}{participant.primaryLane ? ` · 주 ${LANE_LABEL_KO[participant.primaryLane]}` : ""}{participant.secondaryLane ? ` / 부 ${LANE_LABEL_KO[participant.secondaryLane]}` : ""}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(value) => updateRoster(side, lane, value)}
+                          options={participants.map((participant) => ({
+                            value: participant.key,
+                            label: `${participant.name} · ${participant.kind}${participant.primaryLane ? ` · 주 ${LANE_LABEL_KO[participant.primaryLane]}` : ""}${participant.secondaryLane ? ` / 부 ${LANE_LABEL_KO[participant.secondaryLane]}` : ""}`,
+                            keywords: `${participant.name} ${participant.kind} ${participant.primaryLane ?? ""} ${participant.secondaryLane ?? ""}`,
+                            disabled:
+                              participant.key !== roster[side][lane] &&
+                              [...Object.values(roster.BLUE), ...Object.values(roster.RED)].includes(participant.key),
+                          }))}
+                          placeholder="참가자 검색"
+                          ariaLabel={`${side} ${LANE_LABEL_KO[lane]} 참가자`}
+                          searchable
+                          searchPlaceholder="이름, Riot ID, 라인 검색"
+                        />
                       </label>
                     ))}
                   </div>

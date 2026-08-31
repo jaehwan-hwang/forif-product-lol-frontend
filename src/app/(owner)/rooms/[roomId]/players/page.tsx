@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRoom } from "@/components/group/RoomShell";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Field";
+import { Dialog, TextPromptDialog } from "@/components/ui/Dialog";
 import { addPlayer, fetchPlayers, removePlayer, renamePlayer, syncPlayers } from "@/lib/api/players";
 import {
   changeRoomMemberRole,
@@ -25,6 +26,13 @@ const ROLE_LABEL = {
   GROUP_MEMBER: "회원",
 } as const;
 
+type ParticipantDialog =
+  | { kind: "removeMember"; member: RoomMember }
+  | { kind: "editRiot"; player: Player }
+  | { kind: "removeRiot"; player: Player }
+  | { kind: "editGuest"; guest: GroupGuest }
+  | { kind: "removeGuest"; guest: GroupGuest };
+
 export default function PlayersPage() {
   const { room, reload } = useRoom();
   const canManage =
@@ -39,6 +47,38 @@ export default function PlayersPage() {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [syncNotice, setSyncNotice] = useState<string | null>(null);
+  const [participantQuery, setParticipantQuery] = useState("");
+  const [dialog, setDialog] = useState<ParticipantDialog | null>(null);
+  const [dialogValue, setDialogValue] = useState("");
+  const [dialogSaving, setDialogSaving] = useState(false);
+
+  const normalizedQuery = participantQuery.trim().toLocaleLowerCase("ko");
+  const visibleMembers = useMemo(
+    () => members.filter((member) => {
+      const riotId = member.player?.riotAccount
+        ? `${member.player.riotAccount.gameName}#${member.player.riotAccount.tagLine}`
+        : "";
+      return `${member.user.displayName} ${riotId}`.toLocaleLowerCase("ko").includes(normalizedQuery);
+    }),
+    [members, normalizedQuery],
+  );
+  const visibleRiotPlayers = useMemo(
+    () => riotPlayers
+      .filter((player) => player.memberUserId === null)
+      .filter((player) => {
+        const riotId = player.riotAccount
+          ? `${player.riotAccount.gameName}#${player.riotAccount.tagLine}`
+          : "";
+        return `${player.displayName} ${riotId}`.toLocaleLowerCase("ko").includes(normalizedQuery);
+      }),
+    [normalizedQuery, riotPlayers],
+  );
+  const visibleGuests = useMemo(
+    () => guests.filter((guest) =>
+      guest.nickname.toLocaleLowerCase("ko").includes(normalizedQuery),
+    ),
+    [guests, normalizedQuery],
+  );
 
   const load = useCallback(async () => {
     try {
@@ -126,37 +166,6 @@ export default function PlayersPage() {
     }
   }
 
-  async function removeMember(member: RoomMember) {
-    if (!window.confirm(`${member.user.displayName} 님을 그룹에서 삭제할까요?`)) return;
-    try {
-      await removeRoomMember(room.id, member.user.id);
-      await Promise.all([load(), reload()]);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "회원을 삭제하지 못했습니다.");
-    }
-  }
-
-  async function editRiotPlayer(player: Player) {
-    const displayName = window.prompt("그룹에 표시할 이름", player.displayName);
-    if (!displayName || displayName === player.displayName) return;
-    try {
-      await renamePlayer(room.id, player.id, displayName);
-      await load();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "참가자 이름을 변경하지 못했습니다.");
-    }
-  }
-
-  async function deleteRiotPlayer(player: Player) {
-    if (!window.confirm(`${player.displayName} 님을 참가자 목록에서 삭제할까요?`)) return;
-    try {
-      await removePlayer(room.id, player.id);
-      await Promise.all([load(), reload()]);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "참가자를 삭제하지 못했습니다.");
-    }
-  }
-
   async function handleSyncPlayers() {
     try {
       setSyncing(true);
@@ -172,31 +181,41 @@ export default function PlayersPage() {
     }
   }
 
-  async function editGuest(guest: GroupGuest) {
-    const nickname = window.prompt("새 닉네임", guest.nickname);
-    if (!nickname || nickname === guest.nickname) return;
+  async function confirmDialog() {
+    if (!dialog) return;
+    const value = dialogValue.trim();
+    if ((dialog.kind === "editRiot" || dialog.kind === "editGuest") && !value) return;
     try {
-      await renameGuest(room.id, guest.id, nickname);
-      await load();
+      setDialogSaving(true);
+      setError(null);
+      if (dialog.kind === "removeMember") {
+        await removeRoomMember(room.id, dialog.member.user.id);
+        await Promise.all([load(), reload()]);
+      } else if (dialog.kind === "editRiot") {
+        await renamePlayer(room.id, dialog.player.id, value);
+        await load();
+      } else if (dialog.kind === "removeRiot") {
+        await removePlayer(room.id, dialog.player.id);
+        await Promise.all([load(), reload()]);
+      } else if (dialog.kind === "editGuest") {
+        await renameGuest(room.id, dialog.guest.id, value);
+        await load();
+      } else {
+        await removeGuest(room.id, dialog.guest.id);
+        await Promise.all([load(), reload()]);
+      }
+      setDialog(null);
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "닉네임을 변경하지 못했습니다.",
-      );
+      setError(caught instanceof Error ? caught.message : "참가자 정보를 변경하지 못했습니다.");
+      setDialog(null);
+    } finally {
+      setDialogSaving(false);
     }
   }
 
-  async function remove(guest: GroupGuest) {
-    if (!window.confirm(`${guest.nickname} 님을 퇴장시킬까요?`)) return;
-    try {
-      await removeGuest(room.id, guest.id);
-      await Promise.all([load(), reload()]);
-    } catch (caught) {
-      setError(
-        caught instanceof Error ? caught.message : "퇴장시키지 못했습니다.",
-      );
-    }
+  function openEditDialog(action: Extract<ParticipantDialog, { kind: "editRiot" | "editGuest" }>) {
+    setDialogValue(action.kind === "editRiot" ? action.player.displayName : action.guest.nickname);
+    setDialog(action);
   }
 
   return (
@@ -214,6 +233,25 @@ export default function PlayersPage() {
           {error}
         </p>
       )}
+      <label className="mb-5 flex max-w-xl items-center gap-3 rounded-lg border border-line bg-surface px-4">
+        <span aria-hidden="true" className="text-muted">⌕</span>
+        <span className="sr-only">참가자 검색</span>
+        <Input
+          value={participantQuery}
+          onChange={(event) => setParticipantQuery(event.target.value)}
+          placeholder="이름 또는 Riot ID로 참가자 검색"
+          className="h-11 border-0 bg-transparent px-0 focus:border-0"
+        />
+        {participantQuery && (
+          <button
+            type="button"
+            onClick={() => setParticipantQuery("")}
+            className="shrink-0 rounded px-2 py-1 text-sm text-muted hover:bg-raised hover:text-text"
+          >
+            지우기
+          </button>
+        )}
+      </label>
       {canManage && riotPlayers.length > 0 && (
         <div className="mb-5 flex flex-wrap items-center gap-3">
           <Button size="sm" onClick={() => void handleSyncPlayers()} disabled={syncing}>
@@ -277,13 +315,13 @@ export default function PlayersPage() {
 
           <Card>
             <CardHeader eyebrow="Riot 계정" title="비회원 참가자" />
-            {riotPlayers.filter((player) => player.memberUserId === null).length === 0 ? (
+            {visibleRiotPlayers.length === 0 ? (
               <p className="px-5 py-8 text-center text-sm text-muted">
-                등록된 Riot ID 참가자가 없습니다.
+                {normalizedQuery ? "검색된 Riot ID 참가자가 없습니다." : "등록된 Riot ID 참가자가 없습니다."}
               </p>
             ) : (
               <ul>
-                {riotPlayers.filter((player) => player.memberUserId === null).map((player) => (
+                {visibleRiotPlayers.map((player) => (
                   <li
                     key={player.id}
                     className="flex items-center gap-3 border-b border-line-soft px-5 py-3 last:border-b-0"
@@ -298,7 +336,7 @@ export default function PlayersPage() {
                     </div>
                     <LanePreferenceIcons primary={player.primaryLane === "FILL" ? null : player.primaryLane} secondary={player.secondaryLane === "FILL" ? null : player.secondaryLane} />
                     <Badge tone="gain">{formatRank(player.riotAccount)}</Badge>
-                    {canManage && <><Button size="sm" onClick={() => void editRiotPlayer(player)}>수정</Button><Button size="sm" variant="danger" onClick={() => void deleteRiotPlayer(player)}>삭제</Button></>}
+                    {canManage && <><Button size="sm" onClick={() => openEditDialog({ kind: "editRiot", player })}>수정</Button><Button size="sm" variant="danger" onClick={() => setDialog({ kind: "removeRiot", player })}>삭제</Button></>}
                   </li>
                 ))}
               </ul>
@@ -307,8 +345,10 @@ export default function PlayersPage() {
 
           <Card>
             <CardHeader eyebrow="로그인 계정" title="회원" />
-            <ul>
-              {members.map((member) => (
+            {visibleMembers.length === 0 ? (
+              <p className="px-5 py-8 text-center text-sm text-muted">검색된 회원이 없습니다.</p>
+            ) : <ul>
+              {visibleMembers.map((member) => (
                 <li
                   key={member.membershipId}
                   className="flex items-center gap-3 border-b border-line-soft px-5 py-3 last:border-b-0"
@@ -337,23 +377,23 @@ export default function PlayersPage() {
                       </Button>
                     )}
                   {canManage && member.role !== "GROUP_OWNER" && (
-                    <Button size="sm" variant="danger" onClick={() => void removeMember(member)}>삭제</Button>
+                    <Button size="sm" variant="danger" onClick={() => setDialog({ kind: "removeMember", member })}>삭제</Button>
                   )}
                 </li>
               ))}
-            </ul>
+            </ul>}
           </Card>
 
           {canManage && (
             <Card>
               <CardHeader eyebrow="초대 링크 입장" title="게스트" />
-              {guests.length === 0 ? (
+              {visibleGuests.length === 0 ? (
                 <p className="px-5 py-8 text-center text-sm text-muted">
-                  입장한 게스트가 없습니다.
+                  {normalizedQuery ? "검색된 게스트가 없습니다." : "입장한 게스트가 없습니다."}
                 </p>
               ) : (
                 <ul>
-                  {guests.map((guest) => (
+                  {visibleGuests.map((guest) => (
                     <li
                       key={guest.id}
                       className="flex flex-wrap items-center gap-2 border-b border-line-soft px-5 py-3 last:border-b-0"
@@ -362,10 +402,10 @@ export default function PlayersPage() {
                         {guest.nickname}
                       </span>
                       <Badge tone="gain">활성</Badge>
-                      <Button size="sm" onClick={() => void editGuest(guest)}>
+                      <Button size="sm" onClick={() => openEditDialog({ kind: "editGuest", guest })}>
                         이름 변경
                       </Button>
-                      <Button size="sm" onClick={() => void remove(guest)}>
+                      <Button size="sm" onClick={() => setDialog({ kind: "removeGuest", guest })}>
                         퇴장
                       </Button>
                     </li>
@@ -376,6 +416,35 @@ export default function PlayersPage() {
           )}
         </div>
       )}
+
+      <TextPromptDialog
+        open={dialog?.kind === "editRiot" || dialog?.kind === "editGuest"}
+        title={dialog?.kind === "editGuest" ? "게스트 이름 변경" : "참가자 이름 변경"}
+        value={dialogValue}
+        onValueChange={setDialogValue}
+        maxLength={50}
+        pending={dialogSaving}
+        onClose={() => setDialog(null)}
+        onConfirm={() => void confirmDialog()}
+      />
+      <Dialog
+        open={Boolean(dialog && dialog.kind !== "editRiot" && dialog.kind !== "editGuest")}
+        title="참가자를 삭제할까요?"
+        description={
+          dialog?.kind === "removeMember"
+            ? `${dialog.member.user.displayName} 님을 그룹에서 삭제합니다.`
+            : dialog?.kind === "removeRiot"
+              ? `${dialog.player.displayName} 님을 참가자 목록에서 삭제합니다.`
+              : dialog?.kind === "removeGuest"
+                ? `${dialog.guest.nickname} 님을 퇴장시킵니다.`
+                : undefined
+        }
+        confirmLabel="삭제"
+        danger
+        pending={dialogSaving}
+        onClose={() => setDialog(null)}
+        onConfirm={() => void confirmDialog()}
+      />
     </main>
   );
 }

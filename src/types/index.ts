@@ -271,6 +271,20 @@ export interface MatchChampionSummary {
   imageUrl: string | null;
 }
 
+export interface ChampionAnalyticsRow {
+  champion: MatchChampionSummary;
+  lane: Lane;
+  picks: number;
+  wins: number;
+  kdaSum: number;
+  kdaSamples: number;
+}
+
+export interface ChampionAnalyticsResponse {
+  totalMatches: number;
+  rows: ChampionAnalyticsRow[];
+}
+
 export interface MatchDraftAction {
   stepNo: number;
   side: Side;
