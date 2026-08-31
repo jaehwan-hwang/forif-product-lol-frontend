@@ -68,7 +68,7 @@ export default function LeaderboardPage() {
   }
 
   const heading = (key: SortKey, label: string) => (
-    <button type="button" onClick={() => toggle(key)} className="eyebrow hover:text-text">
+    <button type="button" onClick={() => toggle(key)} className="section-label hover:text-text">
       {label}{sortKey === key ? (descending ? " ↓" : " ↑") : ""}
     </button>
   );
@@ -82,12 +82,12 @@ export default function LeaderboardPage() {
           </Button>
         </div>
       )}
-      <div className="mb-8"><p className="eyebrow mb-2">랭킹</p><h1 className="text-xl font-semibold">그룹 레이팅</h1><p className="mt-2 text-[13px] text-muted">솔로랭크 점수로 시작해, 내전 결과가 확정될 때마다 레이팅이 갱신됩니다. 점수 반영을 끈 세션의 경기는 레이팅에 영향을 주지 않습니다.</p></div>
+      <div className="mb-8"><p className="section-label mb-2">랭킹</p><h1 className="text-xl font-semibold">그룹 레이팅</h1><p className="mt-2 text-[13px] text-muted">솔로랭크 점수로 시작해, 내전 결과가 확정될 때마다 레이팅이 갱신됩니다. 점수 반영을 끈 세션의 경기는 레이팅에 영향을 주지 않습니다.</p></div>
       {error && <p className="mb-5 text-sm text-loss">{error}</p>}
       {syncNotice && <p className="mb-5 text-sm text-gain">{syncNotice}</p>}
       <Card className="overflow-x-auto">
         <div className="grid min-w-[760px] grid-cols-[64px_minmax(180px,1fr)_150px_110px_90px_110px] items-center gap-3 border-b border-line px-5 py-3">
-          {heading("rank", "순위")}<span className="eyebrow">이름</span>{heading("solo", "솔랭 점수")}<span className="eyebrow text-right">솔랭 전적</span><span className="text-right">{heading("winRate", "승률")}</span><span className="text-right">{heading("rating", "레이팅")}</span>
+          {heading("rank", "순위")}<span className="section-label">이름</span>{heading("solo", "솔랭 점수")}<span className="section-label text-right">솔랭 전적</span><span className="text-right">{heading("winRate", "솔랭 승률")}</span><span className="text-right">{heading("rating", "레이팅")}</span>
         </div>
         {sorted.length === 0 ? <p className="px-5 py-12 text-center text-sm text-muted">Riot 계정이 연동된 참가자가 없습니다.</p> : (
           <ul>{sorted.map((player) => {

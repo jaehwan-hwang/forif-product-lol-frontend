@@ -85,7 +85,7 @@ export default function RoomOverviewPage() {
       <section className="mb-7 grid grid-cols-2 gap-3 xl:grid-cols-4">
         {metrics.map((metric) => (
           <Card key={metric.label} className="relative overflow-hidden px-5 py-5">
-            <p className="text-sm text-muted">{metric.label}</p>
+            <p className="section-label">{metric.label}</p>
             <div className="mt-3 flex items-end gap-2">
               <strong
                 className={`tabular text-3xl font-semibold ${
@@ -140,7 +140,7 @@ export default function RoomOverviewPage() {
 
             {latestSessions.length > 0 && (
               <div className="mt-5 border-t border-line-soft pt-4">
-                <p className="mb-2 text-sm text-muted">최근 세션</p>
+                <p className="section-label mb-2">최근 세션</p>
                 <ul className="space-y-1">
                   {latestSessions.map((session) => (
                     <li key={session.id}>

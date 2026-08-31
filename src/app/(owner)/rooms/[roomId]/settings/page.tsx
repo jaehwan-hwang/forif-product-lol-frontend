@@ -79,7 +79,7 @@ export default function RoomSettingsPage() {
   return (
     <main className="px-8 py-8">
       <div className="mb-8">
-        <p className="eyebrow mb-2">설정</p>
+        <p className="section-label mb-2">설정</p>
         <h1 className="text-xl font-semibold tracking-tight">그룹 설정</h1>
       </div>
 

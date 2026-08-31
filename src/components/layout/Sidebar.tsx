@@ -22,7 +22,7 @@ export function Sidebar({ roomId, roomName, open, onToggle }: { roomId: number; 
       <aside className={`${open ? "translate-x-0 md:w-56" : "-translate-x-full md:w-14 md:translate-x-0"} fixed bottom-0 left-0 top-20 z-40 w-56 shrink-0 border-r border-line bg-bg transition-[transform,width] md:relative md:top-0`}>
         <div className="border-b border-line px-3 py-5">
           <div className="flex items-center justify-between gap-2">
-            {open && <Link href="/rooms" className="eyebrow hover:text-muted">← 그룹 목록</Link>}
+            {open && <Link href="/rooms" className="section-label hover:text-text">← 그룹 목록</Link>}
             <button type="button" onClick={onToggle} className="hidden h-8 w-8 shrink-0 rounded-md text-muted hover:bg-raised hover:text-text md:block" aria-label={open ? "그룹 메뉴 접기" : "그룹 메뉴 펼치기"}>{open ? "‹" : "›"}</button>
           </div>
           {open && <p className="mt-2.5 px-2 text-sm font-semibold leading-snug">{roomName}</p>}
