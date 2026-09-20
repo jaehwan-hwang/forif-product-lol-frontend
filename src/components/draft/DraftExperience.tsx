@@ -38,6 +38,11 @@ import type {
   Side,
 } from "@/types";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Select";
+import { championSplashUrl } from "@/lib/champion-art";
+import { isStandardChampion } from "@/lib/champion-catalog";
 
 type RoleFilter = Lane | "ALL";
 
@@ -53,6 +58,7 @@ const STATUS_LABEL: Record<DraftState["status"], string> = {
 };
 
 export function DraftExperience({ draftId }: { draftId: string }) {
+  const router = useRouter();
   const numericDraftId = Number(draftId);
   const [draft, setDraft] = useState<DraftState | null>(null);
   const [champions, setChampions] = useState<Champion[]>([]);
@@ -101,8 +107,9 @@ export function DraftExperience({ draftId }: { draftId: string }) {
       if (controller.signal.aborted) return;
       setDraft(draftState);
       lastSeqRef.current = draftState.lastEventSeq;
-      setChampions(championList);
-      championsRef.current = championList;
+      const standardChampions = championList.filter(isStandardChampion);
+      setChampions(standardChampions);
+      championsRef.current = standardChampions;
     } catch (error) {
       if (controller.signal.aborted) return;
       setMessage(error instanceof Error ? error.message : "Draft를 불러오지 못했습니다.");
@@ -365,6 +372,7 @@ export function DraftExperience({ draftId }: { draftId: string }) {
     mark: locked.champion.riotId.slice(0, 2).toUpperCase(),
     sourceMatchId: locked.sourceMatchId,
     source: locked.source,
+    riotId: locked.champion.riotId,
     imageUrl: locked.champion.imageUrl,
   }));
   const bluePicks = buildPickSlots(draft, "BLUE");
@@ -376,8 +384,8 @@ export function DraftExperience({ draftId }: { draftId: string }) {
   const redReserveMs = liveReserveRemaining(draft, "RED", currentStep?.side ?? null, clockNow);
 
   return (
-    <main className="flex h-dvh min-h-[680px] flex-col overflow-hidden bg-bg text-text">
-      <header className="grid h-[86px] shrink-0 grid-cols-[1fr_310px_1fr] border-b border-line bg-surface">
+    <main className="flex h-dvh min-h-[680px] flex-col gap-3 overflow-hidden bg-bg p-4 text-text">
+      <header className="grid h-[86px] shrink-0 grid-cols-[1fr_310px_1fr] overflow-hidden rounded-xl border border-line bg-surface shadow-lg">
         <TeamHeader
           side="BLUE"
           teamName={draft.teams.BLUE.teamName}
@@ -401,7 +409,7 @@ export function DraftExperience({ draftId }: { draftId: string }) {
         />
       </header>
 
-      <section className="grid h-[76px] shrink-0 grid-cols-[1fr_390px_1fr] border-b border-line bg-surface">
+      <section className="grid h-[76px] shrink-0 grid-cols-[1fr_390px_1fr] overflow-hidden rounded-xl border border-line bg-surface">
         <Reserve side="BLUE" reserveMs={blueReserveMs} active={currentStep?.side === "BLUE"} />
         <div className="relative flex flex-col items-center justify-center bg-text text-bg">
           <span className="tabular text-[8px] tracking-[0.2em] text-dim">
@@ -440,12 +448,12 @@ export function DraftExperience({ draftId }: { draftId: string }) {
       </section>
 
       {message && (
-        <div className="shrink-0 border-b border-red/40 bg-red/10 px-6 py-2 text-center text-xs text-red">
+        <div className="shrink-0 rounded-lg border border-red/40 bg-red/10 px-6 py-2 text-center text-sm text-red">
           {message}
         </div>
       )}
 
-      <section className="grid min-h-0 flex-1 grid-cols-[minmax(230px,290px)_minmax(440px,1fr)_minmax(230px,290px)] overflow-hidden">
+      <section className="grid min-h-0 flex-1 grid-cols-[minmax(230px,290px)_minmax(440px,1fr)_minmax(230px,290px)] gap-3 overflow-hidden">
         <DraftRail
           side="BLUE"
           teamName={draft.teams.BLUE.teamName}
@@ -455,7 +463,7 @@ export function DraftExperience({ draftId }: { draftId: string }) {
           activeTurn={currentStep?.side === "BLUE"}
         />
 
-        <section className="relative flex min-h-0 min-w-0 flex-col bg-bg px-7 py-5">
+        <section className="relative flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-line bg-surface px-7 py-5 shadow-lg">
           {reveal && <ChampionReveal key={reveal.key} champion={reveal.champion} actionType={reveal.actionType} side={reveal.side} />}
           {(draft.status === "WAITING" || draft.status === "READY") && (
             <ReadyPanel
@@ -486,13 +494,14 @@ export function DraftExperience({ draftId }: { draftId: string }) {
                     type="button"
                     aria-pressed={role === item}
                     onClick={() => setRole(item)}
-                    className={`border px-3 py-1.5 text-[10px] ${
+                    className={`flex items-center gap-1.5 whitespace-nowrap rounded-md border px-3 py-1.5 text-sm transition-colors ${
                       role === item
                         ? "border-line bg-raised text-text"
                         : "border-transparent text-muted hover:text-text"
                     }`}
                   >
-                    {item}
+                    {item !== "ALL" && <LaneIcon lane={item} size={17} />}
+                    {item === "ALL" ? "전체" : LANE_LABEL[item]}
                   </button>
                 ))}
                 <label className="ml-auto flex h-8 w-48 items-center gap-2 border border-line bg-surface px-3 text-muted">
@@ -532,32 +541,30 @@ export function DraftExperience({ draftId }: { draftId: string }) {
                     )}
                   </p>
                   {currentStep?.actionType === "PICK" && draft.viewer.canLock && viewerTeam && (
-                    <select
-                      value={selectedPlayerId ?? defaultPickPlayer?.playerId ?? ""}
-                      onChange={(event) =>
-                        setSelectedPlayerId(event.target.value ? Number(event.target.value) : null)
-                      }
-                      className="h-9 border border-line bg-surface px-2 text-xs text-text"
-                    >
-                      <option value="" disabled>
-                        기본 픽 순서의 선수
-                      </option>
-                      {viewerTeam.players.map((player) => (
-                        <option key={player.playerId} value={player.playerId}>
-                          {LANE_LABEL[player.lane]} · {player.displayName}
-                        </option>
-                      ))}
-                    </select>
+                    <Select
+                      value={String(selectedPlayerId ?? defaultPickPlayer?.playerId ?? "")}
+                      onChange={(value) => setSelectedPlayerId(value ? Number(value) : null)}
+                      options={viewerTeam.players.map((player) => ({
+                        value: String(player.playerId),
+                        label: `${LANE_LABEL[player.lane]} · ${player.displayName}`,
+                        prefix: <LaneIcon lane={player.lane} size={18} />,
+                      }))}
+                      placeholder="기본 픽 순서의 선수"
+                      ariaLabel="픽할 선수"
+                      placement="top"
+                      className="w-56"
+                    />
                   )}
                 </div>
-                <button
-                  type="button"
+                <Button
                   disabled={!selectedChampion || !draft.viewer.canLock || saving}
                   onClick={handleLock}
-                  className="h-10 shrink-0 bg-gold px-6 text-xs font-bold text-bg disabled:cursor-not-allowed disabled:opacity-40"
+                  variant="primary"
+                  size="sm"
+                  className="shrink-0"
                 >
                   {saving ? "확정 중" : "선택 확정"} <span className="ml-3">↵</span>
-                </button>
+                </Button>
               </footer>
             </>
           )}
@@ -593,7 +600,10 @@ export function DraftExperience({ draftId }: { draftId: string }) {
 
           {draft.status === "COMPLETED" && (
             <DraftScreenMessage title="양 팀 선수 배정이 확정되었습니다.">
-              <p className="text-xs text-muted">세션 화면으로 돌아가 경기를 시작할 수 있습니다.</p>
+              <p className="text-base text-muted">세션 화면으로 돌아가 경기를 시작할 수 있습니다.</p>
+              <Button variant="primary" onClick={() => router.back()}>
+                세션으로 나가기
+              </Button>
             </DraftScreenMessage>
           )}
 
@@ -614,7 +624,7 @@ export function DraftExperience({ draftId }: { draftId: string }) {
         />
       </section>
 
-      <footer className="tabular flex h-[34px] shrink-0 items-center justify-between border-t border-line bg-surface px-6 text-[8px] tracking-[0.12em] text-dim">
+      <footer className="tabular flex h-[38px] shrink-0 items-center justify-between rounded-lg border border-line bg-surface px-6 text-[10px] tracking-[0.08em] text-muted">
         <span className="flex items-center gap-2">
           <i className={`size-1.5 rounded-full ${draft.status === "IN_PROGRESS" ? "bg-red" : "bg-gold"}`} />
           {STATUS_LABEL[draft.status]}
@@ -655,14 +665,13 @@ function ReadyPanel({
         ))}
       </div>
       {draft.viewer.canReady ? (
-        <button
-          type="button"
+        <Button
           disabled={saving}
           onClick={onReady}
-          className="bg-gold px-8 py-3 text-xs font-bold text-bg disabled:opacity-40"
+          variant="primary"
         >
           {saving ? "처리 중" : "READY 확인"}
-        </button>
+        </Button>
       ) : (
         <p className="text-xs text-muted">팀장 READY가 모두 완료되면 밴픽이 시작됩니다.</p>
       )}
@@ -727,21 +736,20 @@ function AssignmentPanel({
                         <LaneTag lane={player.lane} /> · {player.displayName}
                       </span>
                       {editable ? (
-                        <select
-                          value={assignment?.champion.id ?? ""}
+                        <Select
+                          value={String(assignment?.champion.id ?? "")}
                           disabled={saving}
-                          onChange={(event) => {
-                            if (event.target.value) onAssign(player.playerId, Number(event.target.value));
+                          onChange={(value) => {
+                            if (value) onAssign(player.playerId, Number(value));
                           }}
-                          className="h-8 min-w-0 border border-line bg-bg px-2 text-xs text-text"
-                        >
-                          <option value="">챔피언 선택</option>
-                          {picks.map((champion) => (
-                            <option key={champion.id} value={champion.id}>
-                              {champion.nameKo}
-                            </option>
-                          ))}
-                        </select>
+                          options={picks.map((champion) => ({
+                            value: String(champion.id),
+                            label: champion.nameKo,
+                          }))}
+                          placeholder="챔피언 선택"
+                          ariaLabel={`${player.displayName} 챔피언 배정`}
+                          placement="top"
+                        />
                       ) : (
                         <strong className="text-xs">
                           {assignment?.champion.nameKo ?? "미배정"}
@@ -758,14 +766,14 @@ function AssignmentPanel({
       </div>
 
       {draft.viewer.side && !draft.assignmentConfirmed[draft.viewer.side] && (
-        <button
-          type="button"
+        <Button
           disabled={!draft.viewer.canConfirmAssignment || saving}
           onClick={onConfirm}
-          className="mt-3 h-11 shrink-0 bg-gold text-xs font-bold text-bg disabled:cursor-not-allowed disabled:opacity-40"
+          variant="primary"
+          className="mt-3 shrink-0"
         >
           {saving ? "확정 중" : "내 팀 선수 배정 확정"}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -785,37 +793,42 @@ function buildPickSlots(draft: DraftState, side: Side): PickSlot[] {
       player: player.displayName,
       champion: champion?.nameKo ?? null,
       mark: champion?.riotId.slice(0, 2).toUpperCase() ?? "—",
+      riotId: champion?.riotId ?? null,
       imageUrl: champion?.imageUrl ?? null,
     };
   });
 }
 
 function ChampionReveal({ champion, actionType, side }: { champion: Champion; actionType: "BAN" | "PICK"; side: Side }) {
-  const splashUrl = `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champion.riotId}_0.jpg`;
+  const [splashFailed, setSplashFailed] = useState(false);
+  const splashUrl = championSplashUrl(champion.riotId, champion.ddragonVersion);
   const isBan = actionType === "BAN";
   return (
-    <div className="draft-champion-reveal pointer-events-none absolute inset-0 z-30 grid place-items-center overflow-hidden bg-black/80">
-      <Image
-        src={splashUrl}
-        alt=""
-        fill
-        sizes="100vw"
-        className={`scale-110 object-cover opacity-25 blur-xl ${isBan ? "grayscale" : ""}`}
-        priority
-      />
-      <div className={`relative aspect-[1215/717] w-[92%] max-w-5xl overflow-hidden border bg-black shadow-2xl ${side === "BLUE" ? "border-blue" : "border-red"}`}>
-        <Image
-          src={splashUrl}
-          alt={champion.nameKo}
-          fill
-          sizes="(max-width: 1024px) 92vw, 1024px"
-          className={`object-contain ${isBan ? "grayscale" : ""}`}
-          priority
-        />
-        <div className={`absolute inset-0 bg-gradient-to-t ${isBan ? "from-black via-black/10 to-black/30" : "from-black via-transparent to-black/20"}`} />
-        <div className="absolute inset-x-0 bottom-0 px-6 py-5 text-center">
-          <p className={`text-[10px] font-semibold tracking-[.3em] ${side === "BLUE" ? "text-blue" : "text-red"}`}>{side} · {actionType}</p>
-          <p className="mt-1 text-2xl font-semibold text-white">{champion.nameKo}</p>
+    <div className="draft-champion-reveal pointer-events-none absolute inset-0 z-30 grid place-items-center overflow-hidden rounded-xl bg-black/85 backdrop-blur-sm">
+      <div className={`relative w-[92%] max-w-4xl overflow-hidden rounded-2xl border bg-black p-3 shadow-2xl ${side === "BLUE" ? "border-blue" : "border-red"}`}>
+        <div className={`relative aspect-video w-full overflow-hidden rounded-xl bg-bg ${isBan ? "grayscale" : ""}`}>
+          {!splashFailed ? (
+            <Image
+              src={splashUrl}
+              alt={champion.nameKo}
+              fill
+              sizes="(max-width: 1024px) 90vw, 896px"
+              className="object-contain"
+              priority
+              onError={() => setSplashFailed(true)}
+            />
+          ) : (
+            <div className="grid size-full place-items-center bg-gradient-to-br from-raised via-surface to-bg px-6 text-center">
+              <p className="text-sm text-muted">{champion.nameKo} 일러스트를 불러오지 못했습니다.</p>
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 px-6 py-5 text-center">
+            <p className={`text-sm font-semibold tracking-[.18em] ${side === "BLUE" ? "text-blue" : "text-red"}`}>
+              {side} · {isBan ? "밴" : "픽"}
+            </p>
+            <p className="mt-1 text-2xl font-semibold text-white">{champion.nameKo}</p>
+          </div>
         </div>
       </div>
     </div>

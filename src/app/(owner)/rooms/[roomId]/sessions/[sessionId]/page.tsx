@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { Select } from "@/components/ui/Select";
+import { Dialog, TextPromptDialog } from "@/components/ui/Dialog";
+import { championSquareUrl } from "@/lib/champion-art";
 import { FEARLESS_DESCRIPTION, FEARLESS_LABEL } from "@/lib/constants";
 import { LaneTag } from "@/components/ui/LaneTag";
 import { TeamBoard } from "@/components/session/TeamBoard";
@@ -39,6 +42,7 @@ import type {
 
 type KdaField = "kills" | "deaths" | "assists";
 type KdaDraft = Record<number, Record<KdaField, string>>;
+const KDA_MAX_DIGITS = 5;
 
 const STATUS_LABEL: Record<SessionStatus, string> = {
   PREPARING: "준비 중",
@@ -85,6 +89,14 @@ export default function SessionDetailPage() {
     winnerSide: Side;
   } | null>(null);
   const [kdaDraft, setKdaDraft] = useState<KdaDraft>({});
+  const [resultConfirmation, setResultConfirmation] = useState<{
+    match: SessionMatch;
+    participantStats: MatchParticipantStats[];
+    winnerName: string;
+    winnerSide: Side;
+  } | null>(null);
+  const [renameSide, setRenameSide] = useState<Side | null>(null);
+  const [teamNameDraft, setTeamNameDraft] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -151,15 +163,25 @@ export default function SessionDetailPage() {
   }
 
   function openResultEntry(match: SessionMatch, winnerSide: Side) {
+    if (resultEntry?.matchId === match.id) {
+      if (resultEntry.winnerSide === winnerSide) {
+        setResultEntry(null);
+        setKdaDraft({});
+        return;
+      }
+      setResultEntry({ matchId: match.id, winnerSide });
+      return;
+    }
+
     setResultEntry({ matchId: match.id, winnerSide });
     setKdaDraft(
       Object.fromEntries(
         (match.participants ?? []).map((participant) => [
           participant.playerId,
           {
-            kills: String(participant.kills ?? 0),
-            deaths: String(participant.deaths ?? 0),
-            assists: String(participant.assists ?? 0),
+            kills: "",
+            deaths: "",
+            assists: "",
           },
         ]),
       ),
@@ -174,6 +196,37 @@ export default function SessionDetailPage() {
     }));
   }
 
+  function moveKdaFocus(input: HTMLInputElement, offset: number) {
+    const grid = input.closest<HTMLElement>("[data-kda-grid]");
+    const inputs = Array.from(
+      grid?.querySelectorAll<HTMLInputElement>("[data-kda-input]") ?? [],
+    );
+    const target = inputs[inputs.indexOf(input) + offset];
+    if (!target) return;
+    target.focus();
+    target.select();
+  }
+
+  function advanceKdaAtLimit(input: HTMLInputElement) {
+    if (input.value.length === KDA_MAX_DIGITS) moveKdaFocus(input, 1);
+  }
+
+  function handleKdaKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    const offset =
+      event.key === "ArrowLeft"
+        ? -1
+        : event.key === "ArrowRight" || event.key === "Enter"
+          ? 1
+          : event.key === "ArrowUp"
+            ? -3
+            : event.key === "ArrowDown"
+              ? 3
+              : null;
+    if (offset === null) return;
+    event.preventDefault();
+    moveKdaFocus(event.currentTarget, offset);
+  }
+
   async function submitResult(match: SessionMatch) {
     if (!resultEntry || resultEntry.matchId !== match.id) return;
     if ((match.participants ?? []).length !== 10) {
@@ -185,9 +238,9 @@ export default function SessionDetailPage() {
         const draft = kdaDraft[participant.playerId];
         return {
           playerId: participant.playerId,
-          kills: Number(draft?.kills),
-          deaths: Number(draft?.deaths),
-          assists: Number(draft?.assists),
+          kills: draft?.kills ? Number(draft.kills) : Number.NaN,
+          deaths: draft?.deaths ? Number(draft.deaths) : Number.NaN,
+          assists: draft?.assists ? Number(draft.assists) : Number.NaN,
         };
       },
     );
@@ -205,17 +258,24 @@ export default function SessionDetailPage() {
       resultEntry.winnerSide === "BLUE"
         ? match.blueTeamName
         : match.redTeamName;
-    if (!window.confirm(`${match.gameNo}경기를 ${winnerName} 승리로 제안할까요?`)) {
-      return;
-    }
+    setResultConfirmation({ match, participantStats, winnerName, winnerSide: resultEntry.winnerSide });
+  }
+
+  async function confirmResult() {
+    if (!resultConfirmation) return;
     const succeeded = await runAction(() =>
       proposeMatchResult(
-        match.id,
-        resultEntry.winnerSide,
-        participantStats,
+        resultConfirmation.match.id,
+        resultConfirmation.winnerSide,
+        resultConfirmation.participantStats,
       ),
     );
-    if (succeeded) setResultEntry(null);
+    if (succeeded) {
+      setResultEntry(null);
+      setResultConfirmation(null);
+    } else {
+      setResultConfirmation(null);
+    }
   }
 
   if (loading) {
@@ -240,9 +300,15 @@ export default function SessionDetailPage() {
   function renameMyTeam(side: Side) {
     const team = side === "BLUE" ? sessionBlueTeam : sessionRedTeam;
     if (!team) return;
-    const nextName = window.prompt("새 팀 이름을 입력해 주세요. (최대 30자)", team.teamName)?.trim();
-    if (!nextName || nextName === team.teamName) return;
-    void runAction(() => renameSessionTeam(sessionId, nextName));
+    setTeamNameDraft(team.teamName);
+    setRenameSide(side);
+  }
+
+  async function confirmTeamRename() {
+    const nextName = teamNameDraft.trim();
+    if (!renameSide || !nextName) return;
+    await runAction(() => renameSessionTeam(sessionId, nextName));
+    setRenameSide(null);
   }
 
   function matchWinnerName(match: SessionMatch, side: Side) {
@@ -388,18 +454,20 @@ export default function SessionDetailPage() {
             <div className="flex flex-wrap justify-end gap-2">
               {overview.canRequestStart && (
                 <div className="flex items-center gap-2">
-                  <label className="flex h-9 items-center gap-2 rounded-md border border-line bg-bg px-3 text-xs text-muted">
-                    <span>BLUE 진영</span>
-                    <select
+                  <div className="grid min-w-56 grid-cols-[auto_1fr] items-center gap-2 rounded-md border border-line bg-bg pl-3 text-sm text-muted">
+                    <span className="whitespace-nowrap">BLUE 진영</span>
+                    <Select
                       value={blueTeamSide}
                       disabled={saving}
-                      onChange={(event) => setBlueTeamSide(event.target.value as Side)}
-                      className="bg-transparent font-medium text-text outline-none"
-                    >
-                      <option value="BLUE">{sessionBlueTeam?.teamName ?? "BLUE 팀"}</option>
-                      <option value="RED">{sessionRedTeam?.teamName ?? "RED 팀"}</option>
-                    </select>
-                  </label>
+                      onChange={(value) => setBlueTeamSide(value as Side)}
+                      options={[
+                        { value: "BLUE", label: sessionBlueTeam?.teamName ?? "BLUE 팀" },
+                        { value: "RED", label: sessionRedTeam?.teamName ?? "RED 팀" },
+                      ]}
+                      ariaLabel="BLUE 진영 팀"
+                      className="[&>button]:h-9 [&>button]:border-0 [&>button]:bg-transparent"
+                    />
+                  </div>
                   <Button
                     variant="primary"
                     size="sm"
@@ -564,6 +632,16 @@ export default function SessionDetailPage() {
                     <>
                       <Button
                         size="sm"
+                        variant={
+                          resultEntry?.matchId === match.id &&
+                          resultEntry.winnerSide === "BLUE"
+                            ? "primary"
+                            : undefined
+                        }
+                        aria-pressed={
+                          resultEntry?.matchId === match.id &&
+                          resultEntry.winnerSide === "BLUE"
+                        }
                         disabled={saving}
                         onClick={() => openResultEntry(match, "BLUE")}
                       >
@@ -571,6 +649,16 @@ export default function SessionDetailPage() {
                       </Button>
                       <Button
                         size="sm"
+                        variant={
+                          resultEntry?.matchId === match.id &&
+                          resultEntry.winnerSide === "RED"
+                            ? "primary"
+                            : undefined
+                        }
+                        aria-pressed={
+                          resultEntry?.matchId === match.id &&
+                          resultEntry.winnerSide === "RED"
+                        }
                         disabled={saving}
                         onClick={() => openResultEntry(match, "RED")}
                       >
@@ -614,7 +702,7 @@ export default function SessionDetailPage() {
                   <MatchRosterHistory match={match} />
                 )}
                 {resultEntry?.matchId === match.id && (
-                  <div className="mt-4 rounded-lg border border-gold/30 bg-bg/70 p-4">
+                  <div id={`match-result-entry-${match.id}`} className="mt-4 rounded-lg border border-gold/30 bg-bg/70 p-4">
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <p className="text-sm font-medium">KDA 입력</p>
@@ -627,12 +715,15 @@ export default function SessionDetailPage() {
                       <button
                         type="button"
                         className="text-xs text-muted hover:text-text"
-                        onClick={() => setResultEntry(null)}
+                        onClick={() => {
+                          setResultEntry(null);
+                          setKdaDraft({});
+                        }}
                       >
                         닫기
                       </button>
                     </div>
-                    <div className="grid gap-x-6 gap-y-2 lg:grid-cols-2">
+                    <div data-kda-grid className="grid gap-x-6 gap-y-2 lg:grid-cols-2">
                       {(["BLUE", "RED"] as Side[]).flatMap((side) =>
                         (match.participants ?? [])
                           .filter((participant) => participant.side === side)
@@ -651,15 +742,19 @@ export default function SessionDetailPage() {
                                       {participant.displayName} {field}
                                     </span>
                                     <input
+                                      data-kda-input
                                       inputMode="numeric"
                                       value={kdaDraft[participant.playerId]?.[field] ?? ""}
-                                      onChange={(event) =>
+                                      onChange={(event) => {
                                         updateKda(
                                           participant.playerId,
                                           field,
-                                          event.target.value,
-                                        )
-                                      }
+                                          event.currentTarget.value,
+                                        );
+                                        advanceKdaAtLimit(event.currentTarget);
+                                      }}
+                                      onKeyDown={handleKdaKeyDown}
+                                      maxLength={KDA_MAX_DIGITS}
                                       placeholder={field[0].toUpperCase()}
                                       className="tabular h-8 w-full rounded border border-line bg-surface px-1 text-center text-xs outline-none focus:border-gold"
                                     />
@@ -695,6 +790,36 @@ export default function SessionDetailPage() {
         </Card>
       )}
 
+      {resultEntry && (
+        <button
+          type="button"
+          aria-label="KDA 입력 영역으로 이동"
+          aria-controls={`match-result-entry-${resultEntry.matchId}`}
+          title="아래에서 KDA와 경기 결과를 입력해 주세요"
+          className="fixed bottom-6 left-1/2 z-50 grid size-12 -translate-x-1/2 place-items-center rounded-full border border-gold/60 bg-surface/95 text-gold shadow-[0_10px_32px_rgba(0,0,0,0.4)] backdrop-blur transition-colors hover:bg-raised"
+          onClick={() =>
+            document
+              .getElementById(`match-result-entry-${resultEntry.matchId}`)
+              ?.scrollIntoView({ behavior: "smooth", block: "center" })
+          }
+        >
+          <svg
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            className="size-6 animate-bounce"
+            fill="none"
+          >
+            <path
+              d="m6 9 6 6 6-6"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      )}
+
       <div className="flex items-center justify-between border-t border-line-soft pt-5">
         <p className="text-xs text-dim">
           매치는 한 팀장이 시작을 요청하고 상대 팀장이 수락해야 생성됩니다.
@@ -711,6 +836,26 @@ export default function SessionDetailPage() {
           </Button>
         )}
       </div>
+      <Dialog
+        open={resultConfirmation !== null}
+        title="경기 결과를 제안할까요?"
+        description={resultConfirmation ? `${resultConfirmation.match.gameNo}경기를 ${resultConfirmation.winnerName} 승리로 제안합니다. 양 팀의 확인 후 전적에 반영됩니다.` : undefined}
+        confirmLabel="결과 제안"
+        pending={saving}
+        onClose={() => setResultConfirmation(null)}
+        onConfirm={() => void confirmResult()}
+      />
+      <TextPromptDialog
+        open={renameSide !== null}
+        title="팀 이름 변경"
+        description="세션과 경기 전적에 표시할 팀 이름을 입력해 주세요."
+        value={teamNameDraft}
+        onValueChange={setTeamNameDraft}
+        maxLength={30}
+        pending={saving}
+        onClose={() => setRenameSide(null)}
+        onConfirm={() => void confirmTeamRename()}
+      />
     </main>
   );
 }
@@ -763,18 +908,18 @@ function MatchDraftHistory({ match }: { match: SessionMatch }) {
                   return (
                     <li
                       key={action.stepNo}
-                      className={`w-[88px] overflow-hidden rounded border bg-bg/70 ${
+                      className={`w-20 shrink-0 overflow-hidden rounded border bg-bg/70 ${
                         action.side === "BLUE" ? "border-blue/45" : "border-red/45"
                       }`}
                       title={`${action.stepNo}. ${action.side} ${action.actionType} ${action.champion?.nameKo ?? "미선택"}`}
                     >
-                      <div className="relative aspect-square overflow-hidden bg-black">
-                        {action.champion?.imageUrl ? (
+                      <div className="relative size-20 overflow-hidden bg-black">
+                        {action.champion ? (
                           <Image
-                            src={action.champion.imageUrl}
+                            src={championSquareUrl(action.champion.riotId, action.champion.imageUrl)}
                             alt={action.champion.nameKo}
                             fill
-                            sizes="88px"
+                            sizes="80px"
                             className={`object-cover ${isBan ? "grayscale" : ""}`}
                           />
                         ) : (
@@ -848,9 +993,9 @@ function MatchRosterHistory({ match }: { match: SessionMatch }) {
                       className="grid grid-cols-[40px_58px_minmax(0,1fr)_92px] items-center gap-2 border-b border-line-soft px-3 py-2 last:border-b-0"
                     >
                       <div className="relative size-10 overflow-hidden rounded border border-line bg-bg">
-                        {participant.champion?.imageUrl ? (
+                        {participant.champion ? (
                           <Image
-                            src={participant.champion.imageUrl}
+                            src={championSquareUrl(participant.champion.riotId, participant.champion.imageUrl)}
                             alt={participant.champion.nameKo}
                             fill
                             sizes="40px"

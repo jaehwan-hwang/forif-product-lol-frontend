@@ -1,19 +1,6 @@
 import { NavBar } from "@/components/layout/NavBar";
 import { Card, CardHeader } from "@/components/ui/Card";
 
-/**
- * 티어 — 솔랭 티어가 내전 시작 점수로 어떻게 환산되는지 (DESIGN §4.1).
- *
- * "왜 내 시작 점수가 이거냐"는 질문이 반드시 나온다. 그때 이 페이지를 보여주면 된다.
- * 계산은 서버와 똑같은 식이어야 하므로 값을 손으로 적지 말고 백엔드에서 받아올 것.
- *
- * TODO(공통): 표를 GET /api/tiers 로 받아온다. 압축 계수(0.55)는 방마다 다를 수 있고
- *             DESIGN §11 대로 데이터가 쌓이면 재보정할 값이라 하드코딩하면 안 된다.
- *
- * 참고 — 이 페이지를 "그룹 통합 랭킹"으로 만들려면 스키마 결정이 하나 필요하다.
- * 현재 점수는 player_id(방 단위)에 붙어 있어서 방을 넘는 랭킹이 성립하지 않는다.
- * (CLAUDE.md §9 "글로벌 랭킹 필요 여부" — 필요하면 riot_account_ratings 추가)
- */
 const CONVERSION = [
   { rank: "아이언 IV", lp: "0 LP", ladder: 0, seed: 730 },
   { rank: "실버 II", lp: "0 LP", ladder: 1000, seed: 1280 },
@@ -26,9 +13,8 @@ const CONVERSION = [
 
 export default function TierPage() {
   return (
-    <>
+    <div className="min-h-dvh bg-bg">
       <NavBar />
-
       <main className="mx-auto max-w-3xl px-6 py-12">
         <div className="mb-10">
           <p className="section-label mb-3">티어</p>
@@ -45,13 +31,11 @@ export default function TierPage() {
 
         <Card>
           <CardHeader eyebrow="환산표" title="솔랭 티어 → 내전 시작 점수" />
-
           <div className="flex items-center gap-4 border-b border-line px-5 py-2.5">
             <span className="section-label flex-1">솔랭</span>
             <span className="section-label w-24 text-right">환산 점수</span>
             <span className="section-label w-24 text-right">내전 시작</span>
           </div>
-
           <ul>
             {CONVERSION.map((row) => (
               <li
@@ -61,16 +45,12 @@ export default function TierPage() {
                 <span className="flex flex-1 items-center gap-2 text-sm">
                   {row.rank}
                   <span className="tabular text-xs text-dim">{row.lp}</span>
-                  {row.pivot && (
-                    <span className="text-[11px] text-gold">기준점</span>
-                  )}
+                  {row.pivot && <span className="text-[11px] text-gold">기준점</span>}
                 </span>
                 <span className="tabular w-24 text-right text-[13px] text-muted">
                   {row.ladder.toLocaleString()}
                 </span>
-                <span
-                  className={`tabular w-24 text-right text-sm ${row.pivot ? "text-gold" : ""}`}
-                >
+                <span className={`tabular w-24 text-right text-sm ${row.pivot ? "text-gold" : ""}`}>
                   {row.seed.toLocaleString()}
                 </span>
               </li>
@@ -89,6 +69,6 @@ export default function TierPage() {
           </p>
         </div>
       </main>
-    </>
+    </div>
   );
 }

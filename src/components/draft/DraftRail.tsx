@@ -1,12 +1,14 @@
 import { LaneTag } from "@/components/ui/LaneTag";
 import type { Lane, LockedChampionSource, Side } from "@/types";
 import Image from "next/image";
+import { championSquareUrl } from "@/lib/champion-art";
 
 export type PickSlot = {
   lane: Lane;
   player: string;
   champion: string | null;
   mark: string;
+  riotId: string | null;
   imageUrl: string | null;
 };
 
@@ -14,15 +16,32 @@ export type LockedChampion = {
   id: number;
   name: string;
   mark: string;
+  riotId: string;
   imageUrl: string | null;
   sourceMatchId: number | null;
   source: LockedChampionSource;
 };
 
-function ChampionPortrait({ mark, imageUrl, name }: { mark: string; imageUrl: string | null; name: string }) {
+function ChampionPortrait({
+  mark,
+  riotId,
+  imageUrl,
+  name,
+  className = "size-11",
+}: {
+  mark: string;
+  riotId: string | null;
+  imageUrl: string | null;
+  name: string;
+  className?: string;
+}) {
   return (
-    <span className="relative grid aspect-square w-full place-items-center overflow-hidden bg-black">
-      {imageUrl ? <Image src={imageUrl} alt={name} fill sizes="80px" className="object-contain" /> : <><span className="absolute size-2/3 rotate-45 border border-line" /><span className="tabular relative text-xl font-semibold text-text">{mark}</span></>}
+    <span className={`relative grid shrink-0 place-items-center overflow-hidden rounded-md border border-line-soft bg-bg ${className}`}>
+      {riotId ? (
+        <Image src={championSquareUrl(riotId, imageUrl)} alt={name} fill sizes="48px" className="object-cover" />
+      ) : (
+        <span className="tabular text-base font-semibold text-dim">{mark}</span>
+      )}
     </span>
   );
 }
@@ -49,9 +68,7 @@ export function DraftRail({
 
   return (
     <aside
-      className={`flex min-h-0 flex-col border-line bg-surface/70 transition-shadow ${
-        isBlue ? "border-r" : "border-l"
-      } ${
+      className={`flex min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-surface transition-shadow ${
         activeTurn
           ? isBlue
             ? "shadow-[inset_0_0_0_2px_var(--color-blue)]"
@@ -63,7 +80,7 @@ export function DraftRail({
       <div className={`flex h-12 shrink-0 items-center gap-3 border-b px-4 ${sideText} ${
         activeTurn ? `${sideBorder} ${activeBg}` : "border-line"
       }`}>
-        <span className={`tabular border px-2 py-1 text-[10px] font-semibold ${sideBorder}`}>
+        <span className={`tabular rounded border px-2 py-1 text-xs font-semibold ${sideBorder}`}>
           {side}
         </span>
         <strong className="truncate text-sm text-text">{teamName}</strong>
@@ -75,23 +92,18 @@ export function DraftRail({
           return (
             <li
               key={pick.lane}
-              className={`grid min-h-0 items-center overflow-hidden border border-line bg-bg/50 ${
-                isBlue ? "grid-cols-[74px_1fr_24px]" : "grid-cols-[24px_1fr_74px]"
-              } ${active ? `${sideBorder} ${activeBg} ring-1 ring-inset ${isBlue ? "ring-blue" : "ring-red"}` : ""}`}
+              className={`grid min-h-14 grid-cols-[24px_44px_minmax(0,1fr)] items-center gap-2 overflow-hidden rounded-lg border border-line bg-bg/50 px-2 transition-colors ${
+                active ? `${sideBorder} ${activeBg} ring-1 ring-inset ${isBlue ? "ring-blue" : "ring-red"}` : ""
+              }`}
             >
-              {isBlue ? (
-                <>
-                  <ChampionPortrait mark={pick.mark} imageUrl={pick.imageUrl} name={pick.champion ?? "선택되지 않은 챔피언"} />
-                  <PickDetails pick={pick} align="left" />
-                  <span className="tabular text-center text-[10px] text-dim">{index + 1}</span>
-                </>
-              ) : (
-                <>
-                  <span className="tabular text-center text-[10px] text-dim">{index + 1}</span>
-                  <PickDetails pick={pick} align="right" />
-                  <ChampionPortrait mark={pick.mark} imageUrl={pick.imageUrl} name={pick.champion ?? "선택되지 않은 챔피언"} />
-                </>
-              )}
+              <span className="tabular text-center text-xs text-dim">{index + 1}</span>
+              <ChampionPortrait
+                mark={pick.mark}
+                riotId={pick.riotId}
+                imageUrl={pick.imageUrl}
+                name={pick.champion ?? "선택되지 않은 챔피언"}
+              />
+              <PickDetails pick={pick} />
             </li>
           );
         })}
@@ -99,8 +111,8 @@ export function DraftRail({
 
       <div className="shrink-0 border-t border-line p-3">
         <div className="mb-2 flex items-center justify-between">
-          <span className="eyebrow">LOCKED</span>
-          <span className="tabular text-[9px] text-dim">{lockedChampions.length}</span>
+          <span className="text-sm font-medium text-muted">잠긴 챔피언</span>
+          <span className="tabular text-sm text-dim">{lockedChampions.length}</span>
         </div>
         <ul className="grid max-h-24 grid-cols-5 gap-1.5 overflow-y-auto">
           {lockedChampions.map((champion) => (
@@ -109,8 +121,14 @@ export function DraftRail({
               className="min-w-0"
               title={`${champion.name} · ${lockedSourceLabel(champion)}`}
             >
-              <div className="aspect-square overflow-hidden border border-line-soft opacity-55 grayscale">
-                <ChampionPortrait mark={champion.mark} imageUrl={champion.imageUrl} name={champion.name} />
+              <div className="aspect-square overflow-hidden rounded opacity-55 grayscale">
+                <ChampionPortrait
+                  mark={champion.mark}
+                  riotId={champion.riotId}
+                  imageUrl={champion.imageUrl}
+                  name={champion.name}
+                  className="size-full"
+                />
               </div>
               <p className="tabular mt-1 truncate text-center text-[7px] text-dim">
                 {lockedSourceLabel(champion)}
@@ -123,12 +141,13 @@ export function DraftRail({
   );
 }
 
-function PickDetails({ pick, align }: { pick: PickSlot; align: "left" | "right" }) {
+function PickDetails({ pick }: { pick: PickSlot }) {
   return (
-    <div className={`min-w-0 px-3 ${align === "right" ? "text-right" : ""}`}>
-      <small className={`flex items-center gap-1 text-[9px] tracking-wide text-muted ${align === "right" ? "justify-end" : ""}`}>
-        <LaneTag lane={pick.lane} /> · {pick.player}
-      </small>
+    <div className="min-w-0">
+      <span className="flex min-w-0 items-center gap-1 text-xs text-muted">
+        <LaneTag lane={pick.lane} />
+        <span className="truncate">· {pick.player}</span>
+      </span>
       <strong className="mt-1 block truncate text-[13px] text-text">
         {pick.champion ?? "미배정"}
       </strong>

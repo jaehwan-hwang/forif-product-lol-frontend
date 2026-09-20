@@ -52,6 +52,34 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  button {
+    white-space: nowrap;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line) var(--color-bg);
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: var(--color-bg);
+  }
+
+  *::-webkit-scrollbar-thumb {
+    border: 2px solid var(--color-bg);
+    border-radius: 999px;
+    background: var(--color-line);
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--color-muted);
+  }
+
   /* 점수·티어·전적은 전부 자릿수 정렬되어야 읽힌다 */
   .tabular {
     font-family: var(--font-mono);
